@@ -38,15 +38,15 @@ I1 = 1*((seq(income)==(which(data$X.DATE. == 20140303)-1)))
 #Обучение ARIMA c интервенциями 
 #arimax позволяет учитывать интервенции
 model1=arimax(income,
-                   order=c(2,1,1),
-                   xtransf=data.frame(I1,I1),
-                   transfer=list(c(0,0), c(1,0)),
-                   method='ML')
+              order=c(2,1,1),
+              xtransf=data.frame(I1,I1),
+              transfer=list(c(0,0), c(1,0)),
+              method='ML')
 #AIC критерий
 AIC(model1)
 
 plot(income, type = "b", pch = 20, ylab='Income', 
-  main = 'Income and Fitted results. Intervantion deleted', col= "blue",lwd = 2)
+     main = 'Income and Fitted results. Intervantion deleted', col= "blue",lwd = 2)
 lines(fitted(model1), col= "red",lwd =2)
 abline(v = Intervention.Time,col = "red",lwd = 1)
 legend('topleft', c('Income', 'ARIMAX results'), bty='n', lwd=2, col=c('blue', 'red'))
@@ -96,9 +96,9 @@ qqnorm(model_intdel$residuals, main = "Residuals of model after deleted intervet
 qqline(model_intdel$residuals)
 #Формально проверим гипотезу о нормальности
 shapiro.test(model_intdel$residuals)
-#Остатки нормально распределены
+#Остатки нормально распределены (на уровне значимости 5%)
 
-#Проверим гипотезу о автокоррелированнтси
+#Проверим гипотезу об автокоррелированности
 Box.test(model_intdel$residuals, lag = 20, type='Ljung-Box', fitdf = 5+1+6)
 #Автокорреляции нет на уровне значимости 5%
 
