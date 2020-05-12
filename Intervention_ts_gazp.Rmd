@@ -1,0 +1,138 @@
+---
+title: "Interventions_gazp"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Чтение данных и загрузка необходимых библиотек
+```{r begin, echo=TRUE}
+library(TSA)
+PATH = '/Users/Barnett/Desktop/Interventions'
+data = read.csv(file.path(PATH, 'gazp_2014.csv'), header = TRUE, sep = ',')
+```
+
+Получим цены закрытия и перейдем к логарифмическим доходностям
+
+```{r income, echo=TRUE}
+priceclose = data$X.CLOSE.
+income = log(exp(diff(log(priceclose))))
+```
+
+Посмотрим на график цен закрытия
+
+```{r plotpriceclose, echo=TRUE}
+plot(priceclose, type='l', lwd=3, col="blue", main="Price close")
+```
+
+Предполагается, что интервенция произошла в момент времени Т = 3 марта 2014.
+
+Построим график доходностей и отметим момент интервенции
+
+```{r incomeintervention, echo=TRUE}
+Intervention.Time = 0 + (which(data$X.DATE. == 20140303)-1)
+plot(income, type='b', lwd=2, col="blue", main="Income")
+abline(v = Intervention.Time,col = "red",lwd = 2)
+```
+
+Подберем ARIMA модель по ACF и PACF и обучим ее.
+
+```{r arimax, echo=TRUE}
+dincome = diff(income, 1)
+plot(dincome, type='b', lwd=2, col="blue", main="Income")
+#q=1
+acf(dincome,lag.max=20,lwd=3,col = "blue",main = "ACF")
+#p=2
+pacf(dincome,lag.max=20,lwd=3,col = "blue",main = "PACF")
+
+#Учет интервенции 3 марта 2014 в одной точке (интервенция типа импульс)
+I1 = 1*((seq(income)==(which(data$X.DATE. == 20140303)-1)))
+
+model1=arimax(income,
+                   order=c(2,1,1),
+                   xtransf=data.frame(I1,I1),
+                   transfer=list(c(0,0), c(1,0)),
+                   method='ML')
+cat("AIC: ", AIC(model1))
+```
+
+Построим графики доходностей и результат ARIMAX
+
+```{r plotinterarimax, echo=TRUE}
+plot(income, type = "b", pch = 20, ylab='Income', 
+  main = 'Income and Fitted results. Intervantion deleted', col= "blue",lwd = 2)
+lines(fitted(model1), col= "red",lwd =2)
+abline(v = Intervention.Time,col = "red",lwd = 1)
+legend('topleft', c('Income', 'ARIMAX results'), bty='n', lwd=2, col=c('blue', 'red'))
+```
+
+Остатки после удаления модели
+
+```{r resmodel1, echo=TRUE}
+plot(model1$residuals, type = "b", pch = 20,main = "Residuals", col = "blue",lwd = 2)
+abline(v = Intervention.Time, col = "red",lwd = 1)
+```
+
+```{r coefmodel1, echo=TRUE}
+print(model1$coef)
+```
+
+Эффект интервенции
+
+```{r effectintervention, echo=TRUE}
+u_0 = model1$coef[4]
+r_1 = model1$coef[5]
+w_0 = model1$coef[6]
+inter1 = I1 * u_0 + filter(I1, filter=r_1, method='recursive', side=1) * w_0
+plot(inter1, ylab='Intervention Effects', type='h', col = "blue", lwd = 2)
+```
+
+Удаление модели интервенции с моментом интервенции (удаление модели из данных)
+
+```{r deleteintervention, echo=TRUE}
+income.interven.deleted = income - inter1
+plot(income.interven.deleted, main = paste("Income Intervention ", Intervention.Time, "deleted")
+     , col = "blue", type = "b", lwd =2)
+abline(v= Intervention.Time,col = "red",lwd = 1)
+```
+
+Подберем ARIMA модель после удаления интервенции
+
+```{r arimanointervention, echo=TRUE}
+plot(income.interven.deleted, type='b', lwd=2, col="blue", main="Income, intervention is deleted")
+dincome_intdel = diff(income.interven.deleted, 1)
+#q=6
+acf(dincome_intdel,lag.max=20,lwd=3,col = "blue",main = "ACF")
+#p=5
+pacf(dincome_intdel,lag.max=20,lwd=3,col = "blue",main = "PACF")
+
+model_intdel = arima(income.interven.deleted, order = c(5, 1, 6), method = "ML", optim.control = list(maxit = 1000))
+cat("AIC: ", AIC(model_intdel))
+```
+
+Построение графиков, когда интервенция уже удалена
+
+```{r plotnointervetion, echo=TRUE}
+plot(income.interven.deleted, type='l', lwd=2, col="blue", main="Income")
+lines(fitted(model_intdel), col='red', lwd=2, type='l')
+legend('topleft', c('Income no interventions', 'ARIMA results'), bty='n', lwd=2, col=c('blue', 'red'))
+```
+
+Исследование остатков после удаления модели ARIMA
+
+```{r plotresid, echo=TRUE}
+plot(model_intdel$residuals, type='l', lwd=2, col="blue", main="Residuals")
+qqnorm(model_intdel$residuals, main = "Residuals of model after deleted intervetion")
+qqline(model_intdel$residuals)
+```
+
+Проверим остатки на нормальность и автокоррелированность формально. Уровень значимости = 5%.
+
+```{r hypothesis, echo=TRUE}
+shapiro.test(model_intdel$residuals)
+Box.test(model_intdel$residuals, lag = 20, type='Ljung-Box', fitdf = 5+1+6)
+```
+
+Остатки нормально распределены. Автокорреляции нет
