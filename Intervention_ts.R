@@ -46,7 +46,7 @@ model1=arimax(income,
 AIC(model1)
 
 plot(income, type = "b", pch = 20, ylab='Income', 
-     main = 'Income and Fitted results. Intervantion deleted', col= "blue",lwd = 2)
+     main = 'Income and Fitted results', col= "blue",lwd = 2)
 lines(fitted(model1), col= "red",lwd =2)
 abline(v = Intervention.Time,col = "red",lwd = 1)
 legend('topleft', c('Income', 'ARIMAX results'), bty='n', lwd=2, col=c('blue', 'red'))
@@ -68,7 +68,7 @@ plot(inter1, ylab='Intervention Effects', type='h', col = "blue", lwd = 2)
 
 #Удаление модели интервенции с моментом интервенции (удаление модели из данных)
 income.interven.deleted = income - inter1
-plot(income.interven.deleted, main = paste("Income Intervention ", Intervention.Time, "deleted")
+plot(income.interven.deleted, main = paste("Income Intervention ", Intervention.Time, "is deleted")
      , col = "blue", type = "b", lwd =2)
 abline(v= Intervention.Time,col = "red",lwd = 1)
 
