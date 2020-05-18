@@ -1,3 +1,3 @@
 ### Time Series
 
-This repo is to save some my tasks about time series that I made.
+This repo is to save some my tasks in time series that I made.
